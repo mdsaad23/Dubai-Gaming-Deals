@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A gaming laptop or PC component",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["laptop", "cpu", "gpu"] },
+        "brand": { "type": "string" },
+        "specs": { "type": "object" },
+        "imageUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "brand"]
+    },
+    "Deal": {
+      "title": "Deal",
+      "description": "A specific deal for a product",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "productType": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "currency": { "type": "string", "default": "AED" },
+        "discountPercentage": { "type": "number" },
+        "store": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "country": { "type": "string", "default": "UAE" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "specs": { "type": "object" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["productId", "price", "store", "url"]
+    },
+    "AlertSubscription": {
+      "title": "Alert Subscription",
+      "description": "User subscription for price alerts",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of products"
+    },
+    "/deals/{dealId}": {
+      "schema": "Deal",
+      "description": "Active deals"
+    },
+    "/subscriptions/{subId}": {
+      "schema": "AlertSubscription",
+      "description": "User alert subscriptions"
+    }
+  }
+}

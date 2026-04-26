@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'justsaad95@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Validation Blueprints ---
+
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.brand is string && data.brand.size() > 0 && data.brand.size() <= 50 &&
+             data.type in ['laptop', 'cpu', 'gpu'] &&
+             (data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 1000));
+    }
+
+    function isValidDeal(data) {
+      return data.productId is string && isValidId(data.productId) &&
+             data.price is number && data.price > 0 &&
+             data.originalPrice is number && data.originalPrice >= data.price &&
+             data.store is string && data.store.size() > 0 &&
+             data.url is string && data.url.size() <= 1000 &&
+             data.country == 'UAE' &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidSubscription(data) {
+      return (data.email is string && data.email.size() > 0 && data.email.size() <= 256) || 
+             (data.whatsapp is string && data.whatsapp.size() > 0 && data.whatsapp.size() <= 50);
+    }
+
+    // --- Collection Routes ---
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProduct(incoming()) && 
+                    incoming().keys().hasAll(['name', 'brand', 'type']) &&
+                    incoming().keys().size() >= 3;
+      allow update: if isAdmin() && isValidProduct(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasAny(['name', 'brand', 'type', 'specs', 'imageUrl']);
+      allow delete: if isAdmin();
+    }
+
+    match /deals/{dealId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidDeal(incoming()) &&
+                    incoming().keys().hasAll(['productId', 'price', 'store', 'url', 'country', 'updatedAt']) &&
+                    incoming().keys().size() >= 6;
+      allow update: if isAdmin() && isValidDeal(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasAny(['price', 'originalPrice', 'discountPercentage', 'store', 'url', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /subscriptions/{subId} {
+      // Users can create subscriptions publicly
+      allow create: if isValidSubscription(incoming()) &&
+                    incoming().keys().hasAny(['email', 'whatsapp', 'categories', 'createdAt']) &&
+                    incoming().createdAt == request.time;
+      
+      // Reading subscriptions is restricted to prevent PII leak
+      // In a "no login" app, we might allow a creator to see their own if we used a fingerprint or token,
+      // but for simplicity and safety, we deny reading except for admins.
+      allow read: if isAdmin();
+      
+      // Allow updates/deletes if we had a secret token, but for now we'll just allow creation.
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only manageable via console or bootstrapping
+    }
+  }
+}
