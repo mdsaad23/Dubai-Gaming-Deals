@@ -1,0 +1,49 @@
+name: GulfDeals Scraper
+
+on:
+  schedule:
+    - cron: '0 1,7,13,19 * * *'   # 4× daily at 1am, 7am, 1pm, 7pm UTC (= 5am/11am/5pm/11pm UAE)
+  workflow_dispatch:               # manual trigger from GitHub Actions UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PROXY_HOST:           ${{ secrets.PROXY_HOST }}
+      PROXY_PORT:           ${{ secrets.PROXY_PORT }}
+      PROXY_USER:           ${{ secrets.PROXY_USER }}
+      PROXY_PASS:           ${{ secrets.PROXY_PASS }}
+      RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
+      TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
+
+      - name: Run Amazon.ae scraper
+        working-directory: backend/scrapers
+        run: python amazon_ae.py
+
+      - name: Run Noon scraper
+        working-directory: backend/scrapers
+        run: python noon.py
+
+      - name: Send alerts
+        working-directory: backend
+        run: python alert_dispatcher.py
