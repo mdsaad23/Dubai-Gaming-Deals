@@ -851,9 +851,8 @@ const App = () => {
 
           {/* Search */}
           <div style={{ flex: 1, maxWidth: 400, margin: '0 24px', position: 'relative' }}>
-            <Icon name="search" size={15} color="var(--text3)" />
             <input type="text" placeholder="Search laptops, GPUs, CPUs…" value={search} onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', padding: '9px 14px 9px 36px', background: 'var(--surface2)', border: '1.5px solid var(--border)', borderRadius: 9, color: 'var(--text)', fontSize: 14, outline: 'none', position: 'relative' }}
+              style={{ width: '100%', padding: '9px 14px 9px 36px', background: 'var(--surface2)', border: '1.5px solid var(--border)', borderRadius: 9, color: 'var(--text)', fontSize: 14, outline: 'none' }}
               onFocus={e => e.target.style.borderColor = 'var(--green)'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
@@ -910,7 +909,7 @@ const App = () => {
         {/* Sidebar */}
         {category !== 'all' && (
           <aside style={{ width: 220, flexShrink: 0 }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 16px 8px', position: 'sticky', top: 88 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 16px 8px', position: 'sticky', top: 160 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600 }}>
                   <Icon name="filter" size={13} color="var(--green)" /> Filters
