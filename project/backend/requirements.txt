@@ -1,3 +1,15 @@
+# GulfDeals Backend Dependencies
+# Install: pip install -r requirements.txt
+# Then:    playwright install chromium --with-deps
+
+# Database
 supabase==2.5.0
+
+# Browser automation (headless scraping)
 playwright==1.44.0
+
+# HTTP client (alert dispatcher — Resend API, Twilio API)
+httpx==0.27.0
+
+# Environment variables
 python-dotenv==1.0.1

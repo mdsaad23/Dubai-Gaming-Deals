@@ -2,13 +2,25 @@ name: GulfDeals Scraper
 
 on:
   schedule:
-    - cron: '0 1,7,13,19 * * *'   # 4× daily at 1am, 7am, 1pm, 7pm UTC (= 5am/11am/5pm/11pm UAE)
-  workflow_dispatch:               # manual trigger from GitHub Actions UI
+    # 4× daily: 1am, 7am, 1pm, 7pm UTC = 5am / 11am / 5pm / 11pm UAE (UTC+4)
+    - cron: '0 1,7,13,19 * * *'
+  workflow_dispatch:              # manual trigger from GitHub Actions UI
+    inputs:
+      target:
+        description: 'Which scraper to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - amazon
+          - noon
+          - alerts
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45           # full run (both scrapers + detail pages) can take ~30-40min
 
     env:
       SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
@@ -18,9 +30,11 @@ jobs:
       PROXY_USER:           ${{ secrets.PROXY_USER }}
       PROXY_PASS:           ${{ secrets.PROXY_PASS }}
       RESEND_API_KEY:       ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM:          ${{ secrets.RESEND_FROM }}
       TWILIO_ACCOUNT_SID:   ${{ secrets.TWILIO_ACCOUNT_SID }}
       TWILIO_AUTH_TOKEN:    ${{ secrets.TWILIO_AUTH_TOKEN }}
       TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+      SITE_URL:             ${{ secrets.SITE_URL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,21 +43,30 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+          cache-dependency-path: project/backend/requirements.txt
 
-      - name: Install dependencies
-        working-directory: backend
+      - name: Install Python dependencies
+        working-directory: project/backend
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install chromium --with-deps
+
+      - name: Run scrapers via orchestrator
+        working-directory: project/backend/scrapers
         run: |
-          pip install -r requirements.txt
-          playwright install chromium --with-deps
+          TARGET="${{ github.event.inputs.target || 'all' }}"
+          case "$TARGET" in
+            amazon) python ../run_all.py --amazon ;;
+            noon)   python ../run_all.py --noon ;;
+            alerts) python ../run_all.py --alerts ;;
+            *)      python ../run_all.py ;;
+          esac
 
-      - name: Run Amazon.ae scraper
-        working-directory: backend/scrapers
-        run: python amazon_ae.py
-
-      - name: Run Noon scraper
-        working-directory: backend/scrapers
-        run: python noon.py
-
-      - name: Send alerts
-        working-directory: backend
-        run: python alert_dispatcher.py
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs-${{ github.run_id }}
+          path: project/backend/*.log
+          retention-days: 7
